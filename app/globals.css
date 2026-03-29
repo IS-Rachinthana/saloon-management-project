@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-brand-mist text-brand-ink antialiased;
+  background-image:
+    radial-gradient(circle at top left, rgba(213, 164, 65, 0.16), transparent 22%),
+    radial-gradient(circle at 85% 15%, rgba(86, 102, 75, 0.14), transparent 20%),
+    linear-gradient(180deg, #f9f4ed 0%, #f4ede4 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(213, 164, 65, 0.12), transparent 18%),
+    radial-gradient(circle at 85% 20%, rgba(161, 63, 53, 0.09), transparent 24%),
+    radial-gradient(circle at 50% 80%, rgba(86, 102, 75, 0.07), transparent 20%);
+  z-index: -1;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), serif;
+}
+
+* {
+  @apply border-brand-ink/10;
+}
+
+.shell {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+.card {
+  @apply rounded-[28px] border border-brand-ink/10 bg-white/75 backdrop-blur;
+}
+
+.glass-panel {
+  @apply rounded-[32px] border border-white/40 bg-white/60 shadow-glow backdrop-blur-xl;
+}
+
+.section-title {
+  @apply text-3xl font-semibold tracking-tight text-brand-ink sm:text-4xl;
+}
+
+.section-copy {
+  @apply max-w-2xl text-sm leading-7 text-brand-ink/70 sm:text-base;
+}
+
+.grid-overlay {
+  background-image:
+    linear-gradient(rgba(31, 23, 32, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 23, 32, 0.04) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+.soft-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(36px);
+  opacity: 0.8;
+}
