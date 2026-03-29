@@ -4,12 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 export type DashboardBooking = {
   id: string;
+  branchId: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
   bookingDate: string;
   bookingTime: string;
   branchName: string;
+  stylistId: string | null;
   stylistName: string;
   stylistRole: string;
   serviceName: string;
@@ -17,6 +19,7 @@ export type DashboardBooking = {
   status: BookingRequestStatus;
   notes: string | null;
   subItems: { code: string | null; name: string }[];
+  availableStylists: { id: string; name: string; role: string }[];
   createdAt: string;
 };
 
@@ -24,7 +27,19 @@ export async function getDashboardBookings(): Promise<DashboardBooking[]> {
   const bookings = await prisma.bookingRequest.findMany({
     orderBy: [{ bookingDate: "asc" }, { bookingTime: "asc" }, { createdAt: "desc" }],
     include: {
-      branch: true,
+      branch: {
+        include: {
+          employees: {
+            include: {
+              employee: {
+                include: {
+                  user: true
+                }
+              }
+            }
+          }
+        }
+      },
       assignedEmployee: {
         include: {
           user: true
@@ -49,6 +64,8 @@ export async function getDashboardBookings(): Promise<DashboardBooking[]> {
       bookingDate: booking.bookingDate.toISOString().slice(0, 10),
       bookingTime: booking.bookingTime,
       branchName: booking.branch.name,
+      branchId: booking.branch.id,
+      stylistId: booking.assignedEmployeeId,
       stylistName: booking.assignedEmployee?.user.fullName ?? "Any available stylist",
       stylistRole: booking.assignedEmployee?.jobTitle ?? "Unassigned",
       serviceName: primaryService?.serviceName ?? "Salon service",
@@ -60,6 +77,11 @@ export async function getDashboardBookings(): Promise<DashboardBooking[]> {
           code: item.subItemCode,
           name: item.subItemName
         })) ?? [],
+      availableStylists: booking.branch.employees.map(({ employee }) => ({
+        id: employee.id,
+        name: employee.user.fullName,
+        role: employee.jobTitle ?? "Hairdresser"
+      })),
       createdAt: booking.createdAt.toISOString()
     };
   });
