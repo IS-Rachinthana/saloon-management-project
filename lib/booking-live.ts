@@ -150,7 +150,7 @@ export async function getBookingSectionData(): Promise<BookingSectionData> {
   ]);
 
   const branchData: BranchBookingData[] = branches.map((branch) => ({
-    id: branch.id,
+    id: branch.slug,
     name: branch.name,
     stylists: branch.employees.map(({ employee }) => ({
       id: employee.id,
@@ -174,7 +174,7 @@ export async function getBookingSectionData(): Promise<BookingSectionData> {
     const branchPrice = service.branches[0]?.priceLkr ? Number(service.branches[0].priceLkr) : 0;
 
     return {
-      id: service.id,
+      id: service.code ?? service.id,
       code: service.code ?? service.slug.toUpperCase(),
       name: service.name,
       description: service.description ?? "Service details will be shared during booking confirmation.",

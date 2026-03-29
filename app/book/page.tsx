@@ -4,6 +4,9 @@ import { ArrowLeft, CalendarCheck2, Scissors } from "lucide-react";
 import { BookingSection } from "@/components/marketing/booking-section";
 import { getBookingSectionData } from "@/lib/booking-live";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function BookPage() {
   const bookingData = await getBookingSectionData();
 

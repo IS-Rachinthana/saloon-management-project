@@ -56,6 +56,24 @@ export function BookingSection({ initialData }: BookingSectionProps) {
     () => (selectedBranch?.stylists ?? []).filter((stylist) => !activeBookings.some((booking) => booking.stylistId === stylist.id)),
     [selectedBranch, activeBookings]
   );
+  const slotAvailability = useMemo(
+    () =>
+      times.map((time) => {
+        const bookedCount = (selectedBranch?.bookings ?? []).filter(
+          (booking) => booking.date === selectedDate && booking.time === time
+        ).length;
+        const totalStylists = selectedBranch?.stylists.length ?? 0;
+        const freeCount = Math.max(totalStylists - bookedCount, 0);
+
+        return {
+          time,
+          freeCount,
+          bookedCount,
+          isFull: totalStylists > 0 && freeCount === 0
+        };
+      }),
+    [selectedBranch, selectedDate, times]
+  );
   const chosenStylist = selectedBranch?.stylists.find((stylist) => stylist.id === selectedStylistId) ?? null;
   const chosenSubItems = selectedService?.subItems?.filter((item) => selectedSubItems.includes(item.id)) ?? [];
 
@@ -238,19 +256,24 @@ export function BookingSection({ initialData }: BookingSectionProps) {
             <div className="md:col-span-2">
               <p className="mb-3 text-sm text-brand-ink/75">{content.timeLabel}</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {times.map((time) => (
+                {slotAvailability.map((slot) => (
                   <button
-                    key={time}
+                    key={slot.time}
                     type="button"
-                    onClick={() => setSelectedTime(time)}
+                    onClick={() => setSelectedTime(slot.time)}
                     className={cn(
                       "rounded-[18px] border px-4 py-3 text-sm transition",
-                      selectedTime === time
+                      selectedTime === slot.time
                         ? "border-brand-ink bg-brand-ink text-brand-sand"
-                        : "border-brand-ink/10 bg-white/75 text-brand-ink"
+                        : slot.isFull
+                          ? "border-red-200 bg-red-50 text-red-600"
+                          : "border-brand-ink/10 bg-white/75 text-brand-ink"
                     )}
                   >
-                    {time}
+                    <span className="block">{slot.time}</span>
+                    <span className="mt-1 block text-[11px] opacity-80">
+                      {slot.isFull ? "Full" : `${slot.freeCount} free`}
+                    </span>
                   </button>
                 ))}
               </div>

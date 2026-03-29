@@ -47,8 +47,10 @@ export async function POST(request: Request) {
     }
 
     const [branch, service] = await Promise.all([
-      prisma.branch.findUnique({
-        where: { id: branchId },
+      prisma.branch.findFirst({
+        where: {
+          OR: [{ id: branchId }, { slug: branchId }]
+        },
         include: {
           employees: {
             include: {
@@ -57,11 +59,13 @@ export async function POST(request: Request) {
           }
         }
       }),
-      prisma.service.findUnique({
-        where: { id: serviceId },
+      prisma.service.findFirst({
+        where: {
+          OR: [{ id: serviceId }, { code: serviceId }, { slug: serviceId }]
+        },
         include: {
           branches: {
-            where: { branchId, isVisible: true }
+            where: { isVisible: true }
           },
           subItems: {
             where: { id: { in: subItemIds.length ? subItemIds : ["__none__"] } }
@@ -78,6 +82,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Selected service was not found." }, { status: 404 });
     }
 
+    const branchService = service.branches.find((item) => item.branchId === branch.id);
+
+    if (!branchService) {
+      return NextResponse.json({ error: "Selected service is not available in this branch." }, { status: 400 });
+    }
+
     if (stylistId) {
       const branchHasStylist = branch.employees.some(({ employee }) => employee.id === stylistId);
 
@@ -87,7 +97,7 @@ export async function POST(request: Request) {
 
       const existingBooking = await prisma.bookingRequest.findFirst({
         where: {
-          branchId,
+          branchId: branch.id,
           assignedEmployeeId: stylistId,
           bookingDate: new Date(`${bookingDate}T00:00:00.000Z`),
           bookingTime,
@@ -109,13 +119,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "One or more selected sub items are invalid." }, { status: 400 });
     }
 
-    const branchPrice = service.branches[0]?.priceLkr
-      ? new Prisma.Decimal(service.branches[0].priceLkr)
+    const branchPrice = branchService?.priceLkr
+      ? new Prisma.Decimal(branchService.priceLkr)
       : new Prisma.Decimal(0);
 
     const bookingRequest = await prisma.bookingRequest.create({
       data: {
-        branchId,
+        branchId: branch.id,
         assignedEmployeeId: stylistId || null,
         bookingDate: new Date(`${bookingDate}T00:00:00.000Z`),
         bookingTime,
