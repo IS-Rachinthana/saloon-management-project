@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Clock3, PhoneCall, Scissors, Sparkles, Store } from "lucide-react";
 
@@ -15,6 +16,7 @@ type BookingSectionProps = {
 };
 
 export function BookingSection({ initialData }: BookingSectionProps) {
+  const router = useRouter();
   const { language } = useLanguage();
   const content = translations[language].booking;
   const branches = initialData?.branches ?? bookingBranches;
@@ -27,7 +29,14 @@ export function BookingSection({ initialData }: BookingSectionProps) {
   const [selectedTime, setSelectedTime] = useState(times[1] ?? times[0] ?? "09:00");
   const [selectedSubItems, setSelectedSubItems] = useState<string[]>([]);
   const [selectedStylistId, setSelectedStylistId] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [bookingNotes, setBookingNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedBranch = useMemo(
     () => branches.find((branch) => branch.id === selectedBranchId) ?? branches[0],
@@ -53,6 +62,8 @@ export function BookingSection({ initialData }: BookingSectionProps) {
   useEffect(() => {
     setSelectedSubItems([]);
     setSubmitted(false);
+    setSubmitError("");
+    setSubmitMessage("");
   }, [selectedServiceId]);
 
   useEffect(() => {
@@ -63,13 +74,61 @@ export function BookingSection({ initialData }: BookingSectionProps) {
 
   const toggleSubItem = (subItemId: string) => {
     setSubmitted(false);
+    setSubmitError("");
+    setSubmitMessage("");
     setSelectedSubItems((current) =>
       current.includes(subItemId) ? current.filter((item) => item !== subItemId) : [...current, subItemId]
     );
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    setSubmitError("");
+    setSubmitMessage("");
+
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setSubmitError("Please enter your name and phone number before submitting.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          branchId: selectedBranch.id,
+          serviceId: selectedService.id,
+          stylistId: selectedStylistId,
+          subItemIds: selectedSubItems,
+          bookingDate: selectedDate,
+          bookingTime: selectedTime,
+          customerName,
+          customerPhone,
+          customerEmail,
+          notes: bookingNotes
+        })
+      });
+
+      const result = (await response.json()) as { error?: string; message?: string };
+
+      if (!response.ok) {
+        setSubmitError(result.error ?? "Booking submission failed. Please try again.");
+        return;
+      }
+
+      setSubmitted(true);
+      setSubmitMessage(result.message ?? content.submitSuccess);
+      setBookingNotes("");
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      setSubmitError("Booking submission failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!selectedBranch || !selectedService) {
@@ -222,6 +281,48 @@ export function BookingSection({ initialData }: BookingSectionProps) {
               <p className="mt-2 text-sm leading-7 text-brand-ink/75">{selectedService.description}</p>
             </div>
 
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm text-brand-ink/75">
+                <span>Customer name</span>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(event) => setCustomerName(event.target.value)}
+                  className="w-full rounded-[20px] border border-brand-ink/10 bg-white/80 px-4 py-3 outline-none"
+                  placeholder="Enter your full name"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-brand-ink/75">
+                <span>Phone number</span>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(event) => setCustomerPhone(event.target.value)}
+                  className="w-full rounded-[20px] border border-brand-ink/10 bg-white/80 px-4 py-3 outline-none"
+                  placeholder="+94 77 123 4567"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-brand-ink/75 sm:col-span-2">
+                <span>Email address</span>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(event) => setCustomerEmail(event.target.value)}
+                  className="w-full rounded-[20px] border border-brand-ink/10 bg-white/80 px-4 py-3 outline-none"
+                  placeholder="yourname@example.com"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-brand-ink/75 sm:col-span-2">
+                <span>Notes for salon</span>
+                <textarea
+                  value={bookingNotes}
+                  onChange={(event) => setBookingNotes(event.target.value)}
+                  className="min-h-28 w-full rounded-[20px] border border-brand-ink/10 bg-white/80 px-4 py-3 outline-none"
+                  placeholder="Share any styling preferences or extra details"
+                />
+              </label>
+            </div>
+
             {selectedService.notes?.length ? (
               <div className="mt-4 rounded-[22px] border border-brand-gold/25 bg-brand-sand/70 p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-brand-ember">
@@ -350,11 +451,16 @@ export function BookingSection({ initialData }: BookingSectionProps) {
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="mt-4 inline-flex rounded-full bg-brand-ink px-5 py-3 text-sm font-medium text-brand-sand transition hover:bg-brand-ember"
+                disabled={isSubmitting}
+                className={cn(
+                  "mt-4 inline-flex rounded-full px-5 py-3 text-sm font-medium text-brand-sand transition",
+                  isSubmitting ? "bg-brand-ink/60" : "bg-brand-ink hover:bg-brand-ember"
+                )}
               >
-                {content.submitLabel}
+                {isSubmitting ? "Submitting..." : content.submitLabel}
               </button>
-              {submitted ? <p className="mt-4 text-sm text-brand-ember">{content.submitSuccess}</p> : null}
+              {submitError ? <p className="mt-4 text-sm text-red-500">{submitError}</p> : null}
+              {submitted && submitMessage ? <p className="mt-4 text-sm text-brand-ember">{submitMessage}</p> : null}
             </div>
 
             <p className="mt-6 text-sm leading-7 text-brand-ink/60">{content.backendReady}</p>
